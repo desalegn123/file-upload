@@ -1,6 +1,6 @@
 const User = require('../models/Users');
 const bcrypt = require('bcryptjs');
-const jwt =require("jsonwebtoken")
+const jwt = require('jsonwebtoken');
 const registerUser = async (req, res) => {
   try {
     const { userName, email, password, role } = req.body;
@@ -65,13 +65,11 @@ const loginUser = async (req, res) => {
       process.env.JWT_SECRET_KEY,
       { expiresIn: '30m' }
     );
-    res
-      .status(200)
-      .json({
-        success: true,
-        message: 'user logged in successfully',
-        accessToken,
-      });
+    res.status(200).json({
+      success: true,
+      message: 'user logged in successfully',
+      accessToken,
+    });
   } catch (e) {
     console.log(e);
     res
@@ -79,4 +77,35 @@ const loginUser = async (req, res) => {
       .json({ success: false, message: 'some error is occured try agian' });
   }
 };
-module.exports = { registerUser, loginUser };
+const changePassword = async (req, res) => {
+  try {
+    const userId = req.userInfo.userId;
+    const { oldPassword, newPassword } = req.body;
+    const user = await User.findById(userId);
+    if (!user) {
+      return res
+        .status(400)
+        .json({ success: false, message: 'user not found' });
+    }
+    const isPasswordMatch=await bcrypt.compare(oldPassword,user.password)
+    if(!isPasswordMatch){
+      return res.status(400).json({
+        success:false, message:"the used oldpassword is not correct! please try again"
+      })
+    }
+    const salt=await bcrypt.genSalt(10)
+    const newHashedPassword=await bcrypt.hash(newPassword,salt)
+    user.password=newHashedPassword
+    await user.save()
+    res.status(201).json({
+      success:true,
+      message:"password is changed successfully"
+    })
+  } catch (e) {
+    console.log(e);
+    res
+      .status(500)
+      .json({ success: false, message: 'some error is occured try agian' });
+  }
+};
+module.exports = { registerUser, loginUser,changePassword };
